@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: order-api
+
+server:
+  port: 8081
+
+spring.kafka:
+  bootstrap-servers: localhost:9093
+
+app:
+  kafka:
+    ssl:
+      trust-store-location: ${KAFKA_CERTS_DIR:../kafka/certs}/client.truststore.jks
+      key-store-location: ${KAFKA_CERTS_DIR:../kafka/certs}/client.keystore.jks
+      store-password: changeit
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    com.demo.kafka: INFO
+    org.apache.kafka: WARN

@@ -16,5 +16,6 @@ docker compose up -d --remove-orphans
 "$SCRIPT_DIR/create-topics.sh"
 
 echo ""
-echo "Kafka SSL: localhost:9093"
-echo "Kafka UI:  http://localhost:8090"
+echo "Kafka SSL:       localhost:9093"
+echo "Schema Registry: http://localhost:8085"
+echo "Kafka UI:        http://localhost:8090"

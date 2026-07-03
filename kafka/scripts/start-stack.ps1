@@ -12,5 +12,6 @@ docker compose up -d --remove-orphans
 & "$PSScriptRoot\create-topics.ps1"
 
 Write-Host ""
-Write-Host "Kafka SSL: localhost:9093"
-Write-Host "Kafka UI:  http://localhost:8090"
+Write-Host "Kafka SSL:       localhost:9093"
+Write-Host "Schema Registry: http://localhost:8085"
+Write-Host "Kafka UI:        http://localhost:8090"

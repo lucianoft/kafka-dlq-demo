@@ -1,6 +1,6 @@
 package com.demo.kafka.processor.consumer;
 
-import com.demo.kafka.common.model.OrderMessage;
+import com.demo.kafka.common.avro.OrderMessage;
 import com.demo.kafka.common.topic.KafkaTopics;
 import com.demo.kafka.processor.service.DlqPublisherService;
 import com.demo.kafka.processor.service.OrderProcessingService;

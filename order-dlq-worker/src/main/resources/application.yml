@@ -10,6 +10,7 @@ spring.kafka:
 
 app:
   kafka:
+    schema-registry-url: http://localhost:8085
     ssl:
       trust-store-location: ${KAFKA_CERTS_DIR:../kafka/certs}/client.truststore.jks
       key-store-location: ${KAFKA_CERTS_DIR:../kafka/certs}/client.keystore.jks

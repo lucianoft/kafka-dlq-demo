@@ -3,11 +3,12 @@
 [![Java](https://img.shields.io/badge/Java-21-orange?logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.1-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 [![Apache Kafka](https://img.shields.io/badge/Apache%20Kafka-7.6-231F20?logo=apachekafka&logoColor=white)](https://kafka.apache.org/)
+[![Avro](https://img.shields.io/badge/Avro-Schema%20Registry-0078D4)](https://docs.confluent.io/platform/current/schema-registry/index.html)
 [![SSL](https://img.shields.io/badge/Kafka-SSL%20enabled-blue)](https://kafka.apache.org/documentation/#security_ssl)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 [![Maven](https://img.shields.io/badge/Maven-multi--module-C71A36?logo=apachemaven&logoColor=white)](https://maven.apache.org/)
 
-Demo de **Dead Letter Queue (DLQ)** com Apache Kafka em SSL e três microserviços Spring Boot: um produtor REST, um processador de eventos e um worker dedicado à fila de mensagens com falha.
+Demo de **Dead Letter Queue (DLQ)** com Apache Kafka em SSL, **serialização Avro** (Confluent Schema Registry) e três microserviços Spring Boot: um produtor REST, um processador de eventos e um worker dedicado à fila de mensagens com falha.
 
 > **DLQ (Dead Letter Queue)** é um tópico separado onde mensagens que falharam no processamento são enviadas para análise, retry ou descarte — sem bloquear o consumo do tópico principal.
 
@@ -17,19 +18,19 @@ Arquitetura de referência com **produtor**, **processador** e **worker DLQ** se
 
 Ao publicar o repositório, adicione estes [topics](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/classifying-your-repository-with-topics) na página do repo (**Settings → General → Topics**):
 
-`kafka` `apache-kafka` `dlq` `dead-letter-queue` `spring-boot` `spring-kafka` `microservices` `java` `docker` `docker-compose` `ssl` `event-driven` `messaging`
+`kafka` `apache-kafka` `dlq` `dead-letter-queue` `spring-boot` `spring-kafka` `avro` `schema-registry` `confluent` `microservices` `java` `docker` `docker-compose` `ssl` `event-driven` `messaging`
 
 **Descrição curta sugerida** (campo *About* do repositório):
 
-> Demo de Dead Letter Queue com Kafka SSL e 3 microserviços Spring Boot (producer, processor, DLQ worker).
+> Demo de DLQ com Kafka SSL, Avro + Schema Registry e 3 microserviços Spring Boot.
 
 ```
-                    orders.events
+                    orders-events
 order-api  ──────────────────────────►  order-processor
 (producer)                              (consumer)
                                               │ falha
                                               ▼
-                                        orders.events.dlq
+                                        orders-events-dlq
                                               │
                                               ▼
                                         order-dlq-worker
@@ -40,9 +41,47 @@ order-api  ───────────────────────
 
 | Serviço | Porta | Papel |
 |---------|-------|-------|
-| **order-api** | 8081 | REST → publica em `orders.events` |
+| **order-api** | 8081 | REST → publica em `orders-events` |
 | **order-processor** | 8082 | Consome principal; falha → DLQ + ack |
 | **order-dlq-worker** | 8083 | Consome DLQ; falha → **ack + reenvio mesma DLQ** |
+
+## Tópicos Kafka
+
+| Tópico | Papel |
+|--------|-------|
+| `orders-events` | Fila principal de pedidos |
+| `orders-events-dlq` | Dead Letter Queue (mensagens com falha no processamento) |
+
+Os nomes usam **hífen** (sem `.` ou `_`) para evitar warnings de métricas do Kafka. As constantes ficam centralizadas em `KafkaTopics` (`kafka-common`).
+
+## Serialização Avro
+
+Mensagens usam **Avro** com **Confluent Schema Registry**. O schema `OrderMessage` fica em `kafka-common/src/main/avro/order-message.avsc` e a classe Java é gerada no build (`avro-maven-plugin`).
+
+| Item | Detalhe |
+|------|---------|
+| Schema | `order-message.avsc` → `com.demo.kafka.common.avro.OrderMessage` |
+| Serializers | `KafkaAvroSerializer` / `KafkaAvroDeserializer` (Confluent) |
+| Schema Registry | http://localhost:8085 |
+| Factory | `OrderMessages.create(...)` para montar pedidos na API |
+
+O Schema Registry persiste os schemas no Kafka via listener interno SSL (`kafka:9094`). Os microserviços registram/consultam schemas em `app.kafka.schema-registry-url`.
+
+## Infraestrutura local
+
+| Componente | Endereço | Quem usa |
+|------------|----------|----------|
+| Kafka (SSL) | `localhost:9093` | Microserviços Spring Boot no host |
+| Kafka (SSL interno) | `kafka:9094` | Kafka UI, Schema Registry |
+| Schema Registry | http://localhost:8085 | Microserviços (Avro) + Kafka UI |
+| Kafka UI | http://localhost:8090 | Navegador |
+
+O broker expõe **dois listeners SSL**:
+
+- **`9093`** — apps no host/WSL conectam em `localhost:9093`
+- **`9094`** — containers na rede Docker conectam em `kafka:9094` (Kafka UI)
+
+Certificados incluem SAN `localhost`, `kafka` e `127.0.0.1`. O script `generate-certs` usa `-copy_extensions copy` para garantir que o SAN vá para o certificado final.
 
 ## Pré-requisitos
 
@@ -62,14 +101,14 @@ order-api  ───────────────────────
 **Windows (PowerShell):**
 
 ```powershell
-cd C:\development\java\kafka-dlq-demo\kafka\scripts
+cd kafka-dlq-demo/kafka/scripts
 .\generate-certs.ps1
 ```
 
 **Linux / WSL:**
 
 ```bash
-cd /mnt/c/development/java/kafka-dlq-demo/kafka/scripts
+cd kafka-dlq-demo/kafka/scripts
 sed -i 's/\r$//' *.sh   # se clonou no Windows
 chmod +x *.sh
 ./generate-certs.sh
@@ -87,14 +126,14 @@ chmod +x *.sh
 **Windows:**
 
 ```powershell
-cd C:\development\java\kafka-dlq-demo\kafka\scripts
+cd kafka-dlq-demo/kafka/scripts
 .\start-stack.ps1
 ```
 
 **Linux / WSL:**
 
 ```bash
-cd /mnt/c/development/java/kafka-dlq-demo/kafka/scripts
+cd kafka-dlq-demo/kafka/scripts
 ./start-stack.sh
 ```
 
@@ -111,12 +150,17 @@ docker compose up -d --remove-orphans
 | Serviço | URL |
 |---------|-----|
 | Kafka (SSL) | `localhost:9093` |
+| Schema Registry | http://localhost:8085 |
 | Kafka UI | http://localhost:8090 |
 
-Tópicos criados automaticamente:
+> **Kafka UI offline?** O UI conecta ao broker pela rede Docker (`kafka:9094`). Se o cluster aparecer offline, regenere os certificados (o SAN precisa incluir `kafka`) e recrie os containers:
+>
+> ```bash
+> ./kafka/scripts/generate-certs.sh   # ou generate-certs.ps1
+> docker compose up -d --force-recreate kafka kafka-ui
+> ```
 
-- `orders.events`
-- `orders.events.dlq`
+> **Tópicos antigos?** Se você já tinha `orders.events` / `orders.events.dlq` no cluster, delete-os no Kafka UI ou recrie o ambiente (`docker compose down -v`) antes de rodar `create-topics`.
 
 ---
 
@@ -125,7 +169,7 @@ Tópicos criados automaticamente:
 Na raiz do projeto (3 terminais):
 
 ```bash
-cd C:\development\java\kafka-dlq-demo
+cd kafka-dlq-demo
 
 # Terminal 1
 cd order-api && mvn spring-boot:run
@@ -142,7 +186,7 @@ Ou importe o POM pai no STS/Eclipse e rode cada `*Application` como Spring Boot 
 **Certificados:** os apps usam `../kafka/certs` relativo à pasta de cada módulo. Se necessário:
 
 ```powershell
-$env:KAFKA_CERTS_DIR = "C:\development\java\kafka-dlq-demo\kafka\certs"
+$env:KAFKA_CERTS_DIR = "C:\caminho\para\kafka-dlq-demo\kafka\certs"
 ```
 
 ---
@@ -152,17 +196,17 @@ $env:KAFKA_CERTS_DIR = "C:\development\java\kafka-dlq-demo\kafka\certs"
 ### Sucesso (processamento normal)
 
 ```bash
-curl -X POST http://localhost:8081/api/orders ^
-  -H "Content-Type: application/json" ^
-  -d "{\"customer\":\"Joao\",\"amount\":99.90,\"failProcessing\":false,\"failDlq\":false}"
+curl -X POST http://localhost:8081/api/orders \
+  -H "Content-Type: application/json" \
+  -d '{"customer":"Joao","amount":99.90,"failProcessing":false,"failDlq":false}'
 ```
 
 ### Falha no processor → vai para DLQ
 
 ```bash
-curl -X POST http://localhost:8081/api/orders ^
-  -H "Content-Type: application/json" ^
-  -d "{\"customer\":\"Maria\",\"amount\":50.00,\"failProcessing\":true,\"failDlq\":false}"
+curl -X POST http://localhost:8081/api/orders \
+  -H "Content-Type: application/json" \
+  -d '{"customer":"Maria","amount":50.00,"failProcessing":true,"failDlq":false}'
 ```
 
 - `order-processor` falha → publica na DLQ → **ack** no tópico principal
@@ -170,22 +214,22 @@ curl -X POST http://localhost:8081/api/orders ^
 ### Falha no DLQ worker → ack + reenvio mesma DLQ
 
 ```bash
-curl -X POST http://localhost:8081/api/orders ^
-  -H "Content-Type: application/json" ^
-  -d "{\"customer\":\"Pedro\",\"amount\":30.00,\"failProcessing\":true,\"failDlq\":true}"
+curl -X POST http://localhost:8081/api/orders \
+  -H "Content-Type: application/json" \
+  -d '{"customer":"Pedro","amount":30.00,"failProcessing":true,"failDlq":true}'
 ```
 
 - Processor envia para DLQ
-- DLQ worker tenta reprocessar → falha → **ack** → republica em `orders.events.dlq` com header `x-retry-count` incrementado
+- DLQ worker tenta reprocessar → falha → **ack** → republica em `orders-events-dlq` com header `x-retry-count` incrementado
 
 ### Recuperação na DLQ
 
 Envie com `failProcessing:true` (vai para DLQ) e `failDlq:false`:
 
 ```bash
-curl -X POST http://localhost:8081/api/orders ^
-  -H "Content-Type: application/json" ^
-  -d "{\"customer\":\"Ana\",\"amount\":10.00,\"failProcessing\":true,\"failDlq\":false}"
+curl -X POST http://localhost:8081/api/orders \
+  -H "Content-Type: application/json" \
+  -d '{"customer":"Ana","amount":10.00,"failProcessing":true,"failDlq":false}'
 ```
 
 DLQ worker reprocessa com sucesso → ack → mensagem sai da fila.
@@ -207,15 +251,16 @@ DLQ worker reprocessa com sucesso → ack → mensagem sai da fila.
 
 ```
 kafka-dlq-demo/
-├── pom.xml                    # parent Maven
-├── docker-compose.yaml
+├── pom.xml                    # parent Maven (+ repo Confluent)
+├── docker-compose.yaml        # Kafka SSL + Schema Registry + Kafka UI
 ├── kafka/
 │   ├── scripts/
 │   │   ├── generate-certs.ps1 / .sh
 │   │   ├── create-topics.ps1 / .sh
 │   │   └── start-stack.ps1 / .sh
 │   └── certs/                 # gerados (nao commitar)
-├── kafka-common/              # DTO + topicos + headers
+├── kafka-common/              # Avro schema + topicos + headers + config SSL/Avro
+│   └── src/main/avro/order-message.avsc
 ├── order-api/                 # microservico 1
 ├── order-processor/           # microservico 2
 └── order-dlq-worker/          # microservico 3
@@ -237,6 +282,6 @@ docker compose down -v
 
 - Limitar retries (`x-retry-count` max → parking lot topic)
 - Métricas Prometheus por serviço
-- Schema Registry (Avro) se necessário
+- Compatibilidade de schema Avro (BACKWARD / FULL) em evoluções de contrato
 - mTLS com certificados distintos por microserviço
 - Kubernetes + Strimzi ou Confluent Cloud

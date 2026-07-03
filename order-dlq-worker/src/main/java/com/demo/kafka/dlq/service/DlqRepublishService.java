@@ -1,6 +1,6 @@
 package com.demo.kafka.dlq.service;
 
-import com.demo.kafka.common.model.OrderMessage;
+import com.demo.kafka.common.avro.OrderMessage;
 import com.demo.kafka.common.support.KafkaMessageHeaders;
 import com.demo.kafka.common.topic.KafkaTopics;
 import org.apache.kafka.clients.consumer.ConsumerRecord;

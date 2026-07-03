@@ -4,7 +4,7 @@ $ErrorActionPreference = "Stop"
 Write-Host "Aguardando broker..."
 Start-Sleep -Seconds 10
 
-$topics = @("orders.events", "orders.events.dlq")
+$topics = @("orders-events", "orders-events-dlq")
 
 foreach ($topic in $topics) {
     Write-Host "Criando topico: $topic"

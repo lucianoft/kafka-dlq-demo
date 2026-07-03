@@ -30,7 +30,7 @@ openssl req -new -newkey rsa:2048 -keyout broker-key.pem -out broker-req.pem -no
   -subj "/CN=localhost/O=Demo/L=SP/ST=SP/C=BR" \
   -addext "subjectAltName=DNS:localhost,DNS:kafka,IP:127.0.0.1"
 openssl x509 -req -in broker-req.pem -CA ca-cert.pem -CAkey ca-key.pem -CAcreateserial \
-  -out broker-cert.pem -days "$VALIDITY"
+  -out broker-cert.pem -days "$VALIDITY" -copy_extensions copy
 
 openssl pkcs12 -export -in broker-cert.pem -inkey broker-key.pem -chain -CAfile ca-cert.pem \
   -name localhost -out broker.p12 -password pass:"$PASSWORD"

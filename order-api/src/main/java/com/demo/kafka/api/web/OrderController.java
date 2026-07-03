@@ -1,6 +1,8 @@
 package com.demo.kafka.api.web;
 
-import com.demo.kafka.common.model.OrderMessage;
+import com.demo.kafka.common.avro.OrderMessage;
+import com.demo.kafka.common.avro.OrderMessages;
+import com.demo.kafka.common.topic.KafkaTopics;
 import com.demo.kafka.api.service.OrderProducerService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,7 +26,7 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<Map<String, Object>> publish(@RequestBody PublishOrderRequest request) throws Exception {
         String orderId = request.orderId() != null ? request.orderId() : UUID.randomUUID().toString();
-        OrderMessage message = OrderMessage.of(
+        OrderMessage message = OrderMessages.create(
                 orderId,
                 request.customer(),
                 request.amount(),
@@ -35,7 +37,7 @@ public class OrderController {
         return ResponseEntity.accepted().body(Map.of(
                 "orderId", orderId,
                 "status", "published",
-                "topic", "orders.events"
+                "topic", KafkaTopics.ORDERS
         ));
     }
 

@@ -1,0 +1,14 @@
+{
+  "namespace": "com.demo.kafka.common.avro",
+  "type": "record",
+  "name": "OrderMessage",
+  "doc": "Pedido publicado no topico principal e replicado na DLQ em caso de falha",
+  "fields": [
+    {"name": "orderId", "type": "string"},
+    {"name": "customer", "type": "string"},
+    {"name": "amount", "type": "double"},
+    {"name": "failProcessing", "type": "boolean", "doc": "Simula falha no consumer principal"},
+    {"name": "failDlq", "type": "boolean", "doc": "Simula falha no worker DLQ"},
+    {"name": "createdAt", "type": "long", "logicalType": "timestamp-millis"}
+  ]
+}

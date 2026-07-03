@@ -1,6 +1,6 @@
 package com.demo.kafka.api.service;
 
-import com.demo.kafka.common.model.OrderMessage;
+import com.demo.kafka.common.avro.OrderMessage;
 import com.demo.kafka.common.topic.KafkaTopics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +23,7 @@ public class OrderProducerService {
     }
 
     public CompletableFuture<SendResult<String, OrderMessage>> publish(OrderMessage message) {
-        String key = message.orderId() != null ? message.orderId() : UUID.randomUUID().toString();
+        String key = message.getOrderId() != null ? message.getOrderId() : UUID.randomUUID().toString();
         log.info("Publicando pedido {} no topico {}", key, KafkaTopics.ORDERS);
         return kafkaTemplate.send(KafkaTopics.ORDERS, key, message)
                 .whenComplete((result, ex) -> {

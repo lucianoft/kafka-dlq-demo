@@ -5,7 +5,7 @@ set -euo pipefail
 echo "Aguardando broker..."
 sleep 10
 
-topics=("orders.events" "orders.events.dlq")
+topics=("orders-events" "orders-events-dlq")
 
 for topic in "${topics[@]}"; do
   echo "Criando topico: $topic"

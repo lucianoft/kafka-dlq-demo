@@ -8,7 +8,6 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
 
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -22,15 +21,21 @@ public class OrderProducerService {
         this.kafkaTemplate = kafkaTemplate;
     }
 
+    /**
+     * A key do registro Kafka e o customer (nao o orderId): assim todos os pedidos
+     * de um mesmo cliente caem na mesma particao e sao consumidos em ordem.
+     */
     public CompletableFuture<SendResult<String, OrderMessage>> publish(OrderMessage message) {
-        String key = message.getOrderId() != null ? message.getOrderId() : UUID.randomUUID().toString();
-        log.info("Publicando pedido {} no topico {}", key, KafkaTopics.ORDERS);
+        String key = message.getCustomer();
+        String orderId = message.getOrderId();
+        log.info("Publicando pedido {} (customer={}) no topico {}", orderId, key, KafkaTopics.ORDERS);
         return kafkaTemplate.send(KafkaTopics.ORDERS, key, message)
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
-                        log.error("Falha ao publicar pedido {}", key, ex);
+                        log.error("Falha ao publicar pedido {} (customer={})", orderId, key, ex);
                     } else {
-                        log.info("Pedido {} publicado offset={}", key, result.getRecordMetadata().offset());
+                        log.info("Pedido {} (customer={}) publicado partition={} offset={}",
+                                orderId, key, result.getRecordMetadata().partition(), result.getRecordMetadata().offset());
                     }
                 });
     }

@@ -25,6 +25,11 @@ public class OrderController {
 
     @PostMapping
     public ResponseEntity<Map<String, Object>> publish(@RequestBody PublishOrderRequest request) throws Exception {
+        if (request.customer() == null || request.customer().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "customer e obrigatorio: e usado como key Kafka para garantir ordenacao por cliente"
+            ));
+        }
         String orderId = request.orderId() != null ? request.orderId() : UUID.randomUUID().toString();
         OrderMessage message = OrderMessages.create(
                 orderId,
